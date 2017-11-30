@@ -25,5 +25,7 @@ object FileSystemTest {
       case "species" => obj.species
       case x => throw new Exception("No field " + x)
     }
+
+    override def getBoolean(name: String, obj: Animal): Boolean = throw new UnsupportedOperationException("No boolean fields here")
   }
 }

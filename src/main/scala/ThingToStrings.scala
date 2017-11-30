@@ -4,6 +4,6 @@
 trait ThingToStrings[T] {
   def getString(name: String, obj: T): String
 
-//  def getBoolean(name: String, obj: T): Boolean
+  def getBoolean(name: String, obj: T): Boolean
 }
 
