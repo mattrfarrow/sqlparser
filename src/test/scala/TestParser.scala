@@ -6,20 +6,6 @@ import scala.util.{Failure, Success}
 
 class TestParser {
 
-  case class Animal(name: String, species: String)
-
-  class AnimalToString extends ThingToStrings[Animal] {
-    override def getString(name: String, obj: Animal): String = name match {
-      case "name" => obj.name
-      case "species" => obj.species
-      case x => throw new Exception("No field " + x)
-    }
-
-    override def getBoolean(name: String, obj: Animal): Boolean = throw new UnsupportedOperationException
-
-    override def getType(name: String): ExpressionType = ExpressionType.String
-  }
-
   @Test
   def one_selection(): Unit = {
       genericTest("select species from whatever",
@@ -50,6 +36,20 @@ class TestParser {
     }
 
     assertEquals(expected, ParserUtil.process(animals, animalToString, query))
+  }
+
+  case class Animal(name: String, species: String)
+
+  class AnimalToString extends ThingToStrings[Animal] {
+    override def getString(name: String, obj: Animal): String = name match {
+      case "name" => obj.name
+      case "species" => obj.species
+      case x => throw new Exception("No field " + x)
+    }
+
+    override def getBoolean(name: String, obj: Animal): Boolean = throw new UnsupportedOperationException
+
+    override def getType(name: String): ExpressionType = ExpressionType.String
   }
 }
 
