@@ -17,7 +17,7 @@ class TestParser {
 
     override def getBoolean(name: String, obj: Animal): Boolean = throw new UnsupportedOperationException
 
-    override def getType(name: String): ExpressionType = return ExpressionType.String
+    override def getType(name: String): ExpressionType = ExpressionType.String
   }
 
   @Test
