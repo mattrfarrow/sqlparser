@@ -7,21 +7,21 @@ import scala.util.{Failure, Success}
 class TestParser {
 
   @Test
-  def one_selection(): Unit = {
+  def one_selection() = {
       genericTest("select species from whatever",
         """cat
           |hamster""".stripMargin)
   }
 
   @Test
-  def two_selections(): Unit = {
-    genericTest("select species,species from whatever",
-      """cat|cat
-        |hamster|hamster""".stripMargin)
+  def two_selections() = {
+    genericTest("select species,name from whatever",
+      """cat|fluff
+        |hamster|Terry""".stripMargin)
   }
 
   @Test
-  def with_a_filter(): Unit = {
+  def with_a_filter() = {
     genericTest("select species from whatever where species='cat'", """cat""".stripMargin)
   }
 
