@@ -22,52 +22,34 @@ class TestParser {
 
   @Test
   def one_selection(): Unit = {
-      val animals = List(Animal("fluff", "cat"), Animal("Terry","hamster"))
-
-      val animalToString = new AnimalToString
-
-      val query = new TestSqlParser(animalToString).parse("select species from whatever") match {
-        case t: Success[SqlQuery] => t.value
-        case t: Failure[_] => throw t.exception
-      }
-      assertEquals(
+      genericTest("select species from whatever",
         """cat
-          |hamster""".stripMargin,
-        ParserUtil.process(animals, animalToString, query))
+          |hamster""".stripMargin)
   }
 
   @Test
   def two_selections(): Unit = {
-    val animals = List(Animal("fluff", "cat"), Animal("Terry","hamster"))
-
-    val animalToString = new AnimalToString
-
-    val query = new TestSqlParser(animalToString).parse("select species,species from whatever") match {
-      case t: Success[SqlQuery] => t.value
-      case t: Failure[_] => throw t.exception
-    }
-    assertEquals(
+    genericTest("select species,species from whatever",
       """cat|cat
-        |hamster|hamster""".stripMargin,
-      ParserUtil.process(animals, animalToString, query))
+        |hamster|hamster""".stripMargin)
   }
 
   @Test
   def with_a_filter(): Unit = {
+    genericTest("select species from whatever where species='cat'", """cat""".stripMargin)
+  }
+
+  private def genericTest(sql: String, expected: String): Unit = {
     val animals = List(Animal("fluff", "cat"), Animal("Terry","hamster"))
 
     val animalToString = new AnimalToString
 
-    val query = new TestSqlParser(animalToString).parse("select species from whatever where species='cat'") match {
+    val query = new TestSqlParser(animalToString).parse(sql) match {
       case t: Success[SqlQuery] => t.value
       case t: Failure[_] => throw t.exception
     }
 
-    println("Query: " + query)
-
-    assertEquals(
-      """cat""".stripMargin,
-      ParserUtil.process(animals, animalToString, query))
+    assertEquals(expected, ParserUtil.process(animals, animalToString, query))
   }
 }
 
