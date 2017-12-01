@@ -10,12 +10,13 @@ object FileSystemTest {
   def main(args: Array[String]): Unit = {
     val animals = List(Animal("fluff", "cat"), Animal("Terry","hamster"))
 
-    val parser = new SqlParser()
-    val query = TestSqlParser.parse("select species, species from whatever") match {
+    val animalToString = new AnimalToString
+
+    val query = new TestSqlParser(animalToString).parse("select species, species from whatever") match {
       case t: Success[SqlQuery] => t.value
       case t: Failure[_] => throw t.exception
     }
-    println(ParserUtil.process(animals, new AnimalToString, query))
+    println(ParserUtil.process(animals, animalToString, query))
 
   }
 
@@ -27,5 +28,7 @@ object FileSystemTest {
     }
 
     override def getBoolean(name: String, obj: Animal): Boolean = throw new UnsupportedOperationException("No boolean fields here")
+
+    override def getType(name: String): ExpressionType = ExpressionType.String
   }
 }

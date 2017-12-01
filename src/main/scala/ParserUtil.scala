@@ -5,8 +5,7 @@ object ParserUtil {
 
   def process[T](objects: List[T], wordToString: ThingToStrings[T], sqlQuery: SqlQuery): String  = {
     val filtered = sqlQuery.where match {
-      case Some(expression) =>  println("Evaluating where clause: " + expression)
-        objects.filter(obj => expression.evaluate(wordToString, obj))
+      case Some(expression) =>  objects.filter(obj => expression.evaluateBool(wordToString, obj))
       case None => objects
     }
 

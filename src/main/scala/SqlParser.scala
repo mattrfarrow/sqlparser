@@ -1,5 +1,4 @@
 import scala.util.Try
-import scala.util.matching.Regex
 import scala.util.parsing.combinator._
 
 
@@ -7,42 +6,60 @@ case class SqlQuery(fields: Array[FieldExpr], from: String, where: Option[Expres
   override def toString: String = "SELECT " + fields.mkString(",") + " FROM " + from + where.map(e => " WHERE "+e)
 }
 
-abstract class Expression() {
-  def evaluate[T](thingToStrings: ThingToStrings[T], obj: T): Boolean
+trait Expression {
+  def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType
+  def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean
   def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String
 }
 
 case class FieldExpr(name: String) extends Expression {
-  override def evaluate[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = thingToStrings.getBoolean(name, obj)
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = thingToStrings.getBoolean(name, obj)
   override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = thingToStrings.getString(name, obj)
+  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = thingToStrings.getType(name)
 }
 
 case class Comma()
 case class From()
 
-case class EqualsExpr(left: Expression, right: Expression) extends Expression {
+case class EqualsExpr(left: Expression, right: Expression, thingToStrings: ThingToStrings[_]) extends Expression {
+  if(left.getType(thingToStrings) != right.getType(thingToStrings)) {
+    throw new Exception("Left side type is " + left.getType(thingToStrings) + " right side is " + right.getType(thingToStrings))
+  }
 
-  override def evaluate[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = left.evaluate(thingToStrings, obj) == right.evaluate(thingToStrings, obj)
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
+    left.getType(thingToStrings) match {
+      case ExpressionType.Boolean => left.evaluateBool(thingToStrings, obj) == right.evaluateBool(thingToStrings, obj)
+      case ExpressionType.String  => left.evaluateString(thingToStrings, obj) == right.evaluateString(thingToStrings, obj)
+      case _       => throw new IllegalStateException()
+    }
+  }
 
   override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = throw new UnsupportedOperationException
+
+  override def getType[T](thingToStrings:  ThingToStrings[T]): ExpressionType = left.getType(thingToStrings)
 }
 
 case class LiteralStringExpr(string: String) extends Expression {
-  override def evaluate[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = throw new UnsupportedOperationException
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = throw new UnsupportedOperationException
 
   override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = string
+
+  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.String
 }
 case class Where(expr: Expression)
 
 
-class SqlParser extends RegexParsers {
+class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
 
   def number: Parser[Int]    = """(0|[1-9]\d*)""".r ^^ { _.toInt }
 
-  def expression: Parser[_ <: Expression] =   field | equalsExpression  |  literalStringExpr
+  def expression: Parser[_ <: Expression] =   equalsExpression | field | literalStringExpr
+
+  def bracketedExpression: Parser[Expression] = ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
+  def standaloneExpression: Parser[_ <: Expression] = literalStringExpr | field | bracketedExpression
 
   def equalsExpression: Parser[EqualsExpr] ={
-    expression ~ "=" ~ expression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }
+    standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right, thingToStrings) }
   }
 
   def field: Parser[FieldExpr]   = """[a-z]+""".r       ^^ { s => FieldExpr(s) }
@@ -62,7 +79,7 @@ class SqlParser extends RegexParsers {
 
 }
 
-object TestSqlParser extends SqlParser {
+class TestSqlParser(thingToStrings: ThingToStrings[_]) extends SqlParser(thingToStrings) {
 
   def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
     case Success(matched,_) => scala.util.Success(matched)
