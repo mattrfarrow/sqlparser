@@ -1,4 +1,5 @@
 import scala.util.Try
+import scala.util.matching.Regex
 import scala.util.parsing.combinator._
 
 
@@ -21,12 +22,13 @@ case class FieldExpr(name: String) extends Expression {
 case class Comma()
 case class From()
 
-case class EqualsExpr(left: Expression, right: Expression, thingToStrings: ThingToStrings[_]) extends Expression {
-  if(left.getType(thingToStrings) != right.getType(thingToStrings)) {
-    throw new Exception("Left side type is " + left.getType(thingToStrings) + " right side is " + right.getType(thingToStrings))
-  }
+case class EqualsExpr(left: Expression, right: Expression) extends Expression {
 
   override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
+    if(left.getType(thingToStrings) != right.getType(thingToStrings)) {
+      throw new Exception("Left side type is " + left.getType(thingToStrings) + " right side is " + right.getType(thingToStrings))
+    }
+
     left.getType(thingToStrings) match {
       case ExpressionType.Boolean => left.evaluateBool(thingToStrings, obj) == right.evaluateBool(thingToStrings, obj)
       case ExpressionType.String  => left.evaluateString(thingToStrings, obj) == right.evaluateString(thingToStrings, obj)
@@ -36,7 +38,48 @@ case class EqualsExpr(left: Expression, right: Expression, thingToStrings: Thing
 
   override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = throw new UnsupportedOperationException
 
-  override def getType[T](thingToStrings:  ThingToStrings[T]): ExpressionType = left.getType(thingToStrings)
+  override def getType[T](thingToStrings:  ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
+}
+
+case class LikeExpr(left: Expression, toMatch: LiteralStringExpr, thingToStrings: ThingToStrings[_]) extends Expression {
+
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
+    val regex = createRegexFromGlob(toMatch.string)
+    val leftThing: String = left.evaluateString(thingToStrings, obj)
+    leftThing.matches(regex)
+  }
+
+  private def createRegexFromGlob(glob: String) = {
+    val out = new StringBuilder("^")
+    var i = 0
+    while ( {
+      i < glob.length
+    }) {
+      val c = glob.charAt(i)
+      c match {
+        case '*' =>
+          out.append(".*")
+        case '?' =>
+          out.append('.')
+        case '.' =>
+          out.append("\\.")
+        case '\\' =>
+          out.append("\\\\")
+        case _ =>
+          out.append(c)
+      }
+
+      {
+        i += 1; i
+      }
+    }
+    out.append('$')
+    out.toString
+  }
+
+  override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T) = throw new UnsupportedOperationException
+
+  override def getType[T](thingToStrings:  ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
 }
 
 case class LiteralStringExpr(string: String) extends Expression {
@@ -53,13 +96,17 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
 
   def number: Parser[Int]    = """(0|[1-9]\d*)""".r ^^ { _.toInt }
 
-  def expression: Parser[_ <: Expression] =   equalsExpression | field | literalStringExpr
+  def expression: Parser[_ <: Expression] =   likeExpr | equalsExpression | field | literalStringExpr
 
   def bracketedExpression: Parser[Expression] = ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
   def standaloneExpression: Parser[_ <: Expression] = literalStringExpr | field | bracketedExpression
 
   def equalsExpression: Parser[EqualsExpr] ={
-    standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right, thingToStrings) }
+    standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }
+  }
+
+  def likeExpr: Parser[LikeExpr] ={
+    standaloneExpression ~ "like" ~ literalStringExpr ^^ { case left ~ like ~ right  => LikeExpr(left, right, thingToStrings) }
   }
 
   def field: Parser[FieldExpr]   = """[a-z]+""".r       ^^ { s => FieldExpr(s) }
@@ -68,7 +115,7 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
     case f ~ None => Array(f)}
 
   def literalStringExpr: Parser[LiteralStringExpr] =
-     "'" ~ """[a-z]+""".r ~ "'" ^^ { case q1 ~ s ~ q2 => LiteralStringExpr(s) }
+     "'" ~ """[a-z*]+""".r ~ "'" ^^ { case q1 ~ s ~ q2 => LiteralStringExpr(s) }
 
   def where: Parser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
   def selectFrom: Parser[SqlQuery] = "select" ~ fields ~ "from" ~ word ~ opt(where) ^^ {
