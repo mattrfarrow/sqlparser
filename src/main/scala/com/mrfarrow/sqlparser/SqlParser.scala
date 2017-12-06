@@ -125,15 +125,15 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   def literalStringExpr: Parser[LiteralStringExpr] =
      "'" ~ """[a-z*]+""".r ~ "'" ^^ { case q1 ~ s ~ q2 => LiteralStringExpr(s) }
 
-  def from: Parser[String] = "from" ~ word ^^ { case from ~ place => place }
-  def where: Parser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
+  def directoryPath: Parser[String] = """[/.A-Za-z]+""".r
 
+  def from: Parser[String] = "from" ~ directoryPath ^^ { case from ~ place => place }
+  def where: Parser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
 
   def selectFrom: Parser[SqlQuery] = "select" ~ fields ~ opt(from) ~ opt(where) ^^ {
     case select ~ fs ~ from  ~ where => SqlQuery(fs, from, where)}
 
-  def word: Parser[String] =
-    """[a-z]+""".r       ^^ { _.toString }
+  def word: Parser[String] = """[a-z]+""".r
 
   def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
     case Success(matched,_) => scala.util.Success(matched)

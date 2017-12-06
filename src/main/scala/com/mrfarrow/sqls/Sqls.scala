@@ -20,7 +20,6 @@ object Sqls {
   }
 
   def runLs(workingDir: File, sql: String) = {
-    val files = workingDir.listFiles()
 
     val thingsToStrings = new FileToStrings
 
@@ -29,6 +28,17 @@ object Sqls {
       case t: Success[SqlQuery] => t.value
       case t: Failure[_] => throw t.exception
     }
+
+    val directoryToList = query.from match {
+      case None      => workingDir
+      case Some(str) => new File(str)
+    }
+
+    if(!directoryToList.exists()) {
+      throw new Exception ("No such directory: " +directoryToList.getAbsolutePath)
+    }
+
+    val files = directoryToList.listFiles()
 
     ParserUtil.process(files.toList, thingsToStrings, query, false)
   }
