@@ -101,43 +101,42 @@ case class Where(expr: Expression)
 case class From(s: String)
 
 class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
-
-  def number: Parser[Int]    = """(0|[1-9]\d*)""".r ^^ { _.toInt }
-
-  def expression: Parser[_ <: Expression] =   likeExpr | equalsExpression | field | literalStringExpr
-
-  def bracketedExpression: Parser[Expression] = ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
-  def standaloneExpression: Parser[_ <: Expression] = literalStringExpr | field | bracketedExpression
-
-  def equalsExpression: Parser[EqualsExpr] ={
-    standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }
-  }
-
-  def likeExpr: Parser[LikeExpr] ={
-    standaloneExpression ~ "like" ~ literalStringExpr ^^ { case left ~ like ~ right  => LikeExpr(left, right, thingToStrings) }
-  }
-
-  def field: Parser[FieldExpr]   = """[a-z]+""".r       ^^ { s => FieldExpr(s) }
-  def fields: Parser[Array[FieldExpr]]  = field ~ opt("," ~ fields) ^^ {
-    case f ~ Some(comma ~ fs) => Array(f) ++ fs
-    case f ~ None => Array(f)}
-
-  def literalStringExpr: Parser[LiteralStringExpr] =
-     "'" ~ """[a-z*]+""".r ~ "'" ^^ { case q1 ~ s ~ q2 => LiteralStringExpr(s) }
-
-  def directoryPath: Parser[String] = """[/.A-Za-z]+""".r
-
-  def from: Parser[String] = "from" ~ directoryPath ^^ { case from ~ place => place }
-  def where: Parser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
-
-  def selectFrom: Parser[SqlQuery] = "select" ~ fields ~ opt(from) ~ opt(where) ^^ {
-    case select ~ fs ~ from  ~ where => SqlQuery(fs, from, where)}
-
-  def word: Parser[String] = """[a-z]+""".r
-
   def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
     case Success(matched,_) => scala.util.Success(matched)
     case Failure(msg,remaining) => scala.util.Failure(new Exception("Parser failed: "+msg ))
     case Error(msg,_) => scala.util.Failure(new Exception(msg))
   }
+
+  private def number: Parser[Int]    = """(0|[1-9]\d*)""".r ^^ { _.toInt }
+
+  private def expression: Parser[_ <: Expression] =   likeExpr | equalsExpression | field | literalStringExpr
+
+  private def bracketedExpression: Parser[Expression] = ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
+  private def standaloneExpression: Parser[_ <: Expression] = literalStringExpr | field | bracketedExpression
+
+  private def equalsExpression: Parser[EqualsExpr] ={
+    standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }
+  }
+
+  private def likeExpr: Parser[LikeExpr] ={
+    standaloneExpression ~ "like" ~ literalStringExpr ^^ { case left ~ like ~ right  => LikeExpr(left, right, thingToStrings) }
+  }
+
+  private def field: Parser[FieldExpr]   = """[a-z]+""".r       ^^ { s => FieldExpr(s) }
+  private def fields: Parser[Array[FieldExpr]]  = field ~ opt("," ~ fields) ^^ {
+    case f ~ Some(comma ~ fs) => Array(f) ++ fs
+    case f ~ None => Array(f)}
+
+  private def literalStringExpr: Parser[LiteralStringExpr] =
+     "'" ~ """[a-z*]+""".r ~ "'" ^^ { case q1 ~ s ~ q2 => LiteralStringExpr(s) }
+
+  private def directoryPath: Parser[String] = """[/.A-Za-z]+""".r
+
+  private def from: Parser[String] = "from" ~ directoryPath ^^ { case from ~ place => place }
+  private def where: Parser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
+
+  private def selectFrom: Parser[SqlQuery] = "select" ~ fields ~ opt(from) ~ opt(where) ^^ {
+    case select ~ fs ~ from  ~ where => SqlQuery(fs, from, where)}
+
+  private def word: Parser[String] = """[a-z]+""".r
 }
