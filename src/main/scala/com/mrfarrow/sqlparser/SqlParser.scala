@@ -13,7 +13,7 @@ object SqlParser {
 
 }
 
-case class SqlQuery(fields: Array[FieldExpr], from: String, where: Option[Expression]) {
+case class SqlQuery(fields: Array[FieldExpr], from: Option[String], where: Option[Expression]) {
   override def toString: String = "SELECT " + fields.mkString(",") + " FROM " + from + where.map(e => " WHERE "+e)
 }
 
@@ -98,6 +98,7 @@ case class LiteralStringExpr(string: String) extends Expression {
 }
 case class Where(expr: Expression)
 
+case class From(s: String)
 
 class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
 
@@ -124,9 +125,12 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   def literalStringExpr: Parser[LiteralStringExpr] =
      "'" ~ """[a-z*]+""".r ~ "'" ^^ { case q1 ~ s ~ q2 => LiteralStringExpr(s) }
 
+  def from: Parser[String] = "from" ~ word ^^ { case from ~ place => place }
   def where: Parser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
-  def selectFrom: Parser[SqlQuery] = "select" ~ fields ~ "from" ~ word ~ opt(where) ^^ {
-    case select ~ fs ~ from ~ wd ~ where => SqlQuery(fs, wd, where)}
+
+
+  def selectFrom: Parser[SqlQuery] = "select" ~ fields ~ opt(from) ~ opt(where) ^^ {
+    case select ~ fs ~ from  ~ where => SqlQuery(fs, from, where)}
 
   def word: Parser[String] =
     """[a-z]+""".r       ^^ { _.toString }

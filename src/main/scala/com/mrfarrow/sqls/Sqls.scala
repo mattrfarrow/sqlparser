@@ -16,34 +16,13 @@ object Sqls {
     val currentDir = System.getProperty("user.dir")
     println("Running from "+ currentDir)
 
-    runLs(new File(currentDir), sql)
+    println(runLs(new File(currentDir), sql))
   }
 
   def runLs(workingDir: File, sql: String) = {
     val files = workingDir.listFiles()
 
-
-    val thingsToStrings = new ThingToStrings[File] {
-      override def getType(name: String): ExpressionType = name match {
-        case "name" => ExpressionType.String
-        case "size" => ExpressionType.Integer
-        case "type" => ExpressionType.String
-        case "isdir" => ExpressionType.Boolean
-      }
-
-      override def getString(name: String, obj: File): String = name match {
-        case "name" => obj.getName
-        case "type" => if (obj.isDirectory) "dir" else "file"
-      }
-
-      override def getBoolean(name: String, obj: File): Boolean = name match {
-        case "isdir" => obj.isDirectory
-      }
-
-      override def getInt(name: String, obj: File): Int = name match {
-        case "size" => obj.length().asInstanceOf[Int]
-      }
-    }
+    val thingsToStrings = new FileToStrings
 
     println("Parsing " + sql)
     val query = new SqlParser(thingsToStrings).parse(sql) match {
@@ -51,7 +30,7 @@ object Sqls {
       case t: Failure[_] => throw t.exception
     }
 
-    System.out.println(ParserUtil.process(files.toList, thingsToStrings, query))
+    ParserUtil.process(files.toList, thingsToStrings, query)
   }
 
 }
