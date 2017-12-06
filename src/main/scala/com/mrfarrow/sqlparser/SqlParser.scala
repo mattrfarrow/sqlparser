@@ -29,6 +29,9 @@ case class FieldExpr(name: String) extends Expression {
   override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = thingToStrings.getType(name)
 }
 
+case class From(s: String)
+case class Where(expr: Expression)
+
 case class EqualsExpr(left: Expression, right: Expression) extends Expression {
 
   override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
@@ -51,37 +54,9 @@ case class EqualsExpr(left: Expression, right: Expression) extends Expression {
 case class LikeExpr(left: Expression, toMatch: LiteralStringExpr, thingToStrings: ThingToStrings[_]) extends Expression {
 
   override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
-    val regex = createRegexFromGlob(toMatch.string)
+    val regex = ParserRegex.createRegexFromGlob(toMatch.string)
     val leftThing: String = left.evaluateString(thingToStrings, obj)
     leftThing.matches(regex)
-  }
-
-  private def createRegexFromGlob(glob: String) = {
-    val out = new StringBuilder("^")
-    var i = 0
-    while ( {
-      i < glob.length
-    }) {
-      val c = glob.charAt(i)
-      c match {
-        case '*' =>
-          out.append(".*")
-        case '?' =>
-          out.append('.')
-        case '.' =>
-          out.append("\\.")
-        case '\\' =>
-          out.append("\\\\")
-        case _ =>
-          out.append(c)
-      }
-
-      {
-        i += 1; i
-      }
-    }
-    out.append('$')
-    out.toString
   }
 
   override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T) = throw new UnsupportedOperationException
@@ -96,9 +71,6 @@ case class LiteralStringExpr(string: String) extends Expression {
 
   override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.String
 }
-case class Where(expr: Expression)
-
-case class From(s: String)
 
 class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
