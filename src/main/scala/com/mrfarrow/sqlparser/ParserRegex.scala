@@ -3,7 +3,7 @@ package com.mrfarrow.sqlparser
 
 object ParserRegex {
 
-  def createRegexFromGlob(glob: String) = {
+  def createRegexFromGlob(glob: String): String = {
     val out = new StringBuilder("^")
     var i = 0
     while ( {
