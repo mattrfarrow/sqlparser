@@ -1,8 +1,17 @@
 package com.mrfarrow.sqlparser
 
+
 import scala.util.Try
 import scala.util.parsing.combinator._
 
+
+object SqlParser {
+
+  def parse(sql: String, thingToStrings: ThingToStrings[_]): Try[SqlQuery] = {
+    new SqlParser(thingToStrings).parse(sql)
+  }
+
+}
 
 case class SqlQuery(fields: Array[FieldExpr], from: String, where: Option[Expression]) {
   override def toString: String = "SELECT " + fields.mkString(",") + " FROM " + from + where.map(e => " WHERE "+e)
