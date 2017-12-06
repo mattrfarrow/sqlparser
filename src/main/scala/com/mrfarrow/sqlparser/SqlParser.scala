@@ -20,9 +20,6 @@ case class FieldExpr(name: String) extends Expression {
   override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = thingToStrings.getType(name)
 }
 
-case class Comma()
-case class From()
-
 case class EqualsExpr(left: Expression, right: Expression) extends Expression {
 
   override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
