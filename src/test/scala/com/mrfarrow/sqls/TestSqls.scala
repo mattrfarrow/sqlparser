@@ -11,4 +11,12 @@ class TestSqls extends FlatSpec with Matchers {
     Sqls.runLs(new File("src/test/resources"), sql) should be ("shortFile.txt")
   }
 
+  it should "pad fields" in {
+    val sql = """select name, type"""
+    Sqls.runLs(new File("src/test/resources"), sql) should be (
+      "longerFile.txt file\n" +
+      "shortFile.txt  file"
+      )
+  }
+
 }

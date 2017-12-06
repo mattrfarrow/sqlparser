@@ -58,7 +58,7 @@ class TestParser extends FlatSpec with Matchers {
       case t: Failure[_] => throw t.exception
     }
 
-    ParserUtil.process(animals, animalToString, query) should be(expected)
+    ParserUtil.process(animals, animalToString, query, true) should be(expected)
   }
 
   case class Animal(name: String, species: String)

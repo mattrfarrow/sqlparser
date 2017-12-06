@@ -5,18 +5,45 @@ package com.mrfarrow.sqlparser
   */
 object ParserUtil {
 
-  def process[T](objects: List[T], wordToString: ThingToStrings[T], sqlQuery: SqlQuery): String  = {
+  def getMaximumFieldLengths(resp: List[Array[String]]): Array[Int] = {
+    assert(resp.nonEmpty)
+    val maxSizes = new Array[Int](resp.head.length)
+    resp.foreach { record =>
+
+      var fieldNumber = 0
+      record.indices.foreach( fieldNumber =>
+        maxSizes(fieldNumber) = Math.max(maxSizes(fieldNumber), record(fieldNumber).length))
+    }
+    maxSizes
+  }
+
+
+  def process[T](objects: List[T], wordToString: ThingToStrings[T], sqlQuery: SqlQuery, pipesNotSpaces: Boolean): String  = {
     val filtered = sqlQuery.where match {
       case Some(expression) =>  objects.filter(obj => expression.evaluateBool(wordToString, obj))
       case None => objects
     }
 
-    val resp: List[String] =
+    val resp: List[Array[String]] =
       filtered.map(o => {
-      sqlQuery.fields.map(field => getStringRepr(field.name, o, wordToString)).mkString("|")
+      sqlQuery.fields.map(field => getStringRepr(field.name, o, wordToString))
     })
 
-    resp.mkString("\n")
+
+    if(pipesNotSpaces) {
+      resp.map(_.mkString("|")).mkString("\n")
+    } else {
+      val fieldLengths: Array[Int] = getMaximumFieldLengths(resp)
+      resp.map(record =>
+        record.indices.map(index =>
+          if(index == record.indices.last) {
+            record(index)
+          } else {
+            record(index).padTo(fieldLengths(index) + 1, ' ')
+          }
+        ).mkString("")
+      ).mkString("\n")
+    }
   }
 
   def getStringRepr[T](fieldName: String, obj: T, thingToStrings: ThingToStrings[T]): String = {

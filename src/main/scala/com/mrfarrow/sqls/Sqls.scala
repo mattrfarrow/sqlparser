@@ -30,7 +30,7 @@ object Sqls {
       case t: Failure[_] => throw t.exception
     }
 
-    ParserUtil.process(files.toList, thingsToStrings, query)
+    ParserUtil.process(files.toList, thingsToStrings, query, false)
   }
 
 }
