@@ -67,12 +67,14 @@ class TestParser extends FlatSpec with Matchers {
     override def getString(name: String, obj: Animal): String = name match {
       case "name" => obj.name
       case "species" => obj.species
-      case x => throw new Exception("No field " + x)
+        case x => throw new Exception("No field " + x)
     }
 
     override def getBoolean(name: String, obj: Animal): Boolean = throw new UnsupportedOperationException
 
     override def getType(name: String): ExpressionType = ExpressionType.String
+
+    override def getInt(name: String, obj: Animal): Int = 0
   }
 }
 

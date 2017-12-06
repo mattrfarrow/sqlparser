@@ -13,10 +13,21 @@ object ParserUtil {
 
     val resp: List[String] =
       filtered.map(o => {
-      sqlQuery.fields.map(field => wordToString.getString(field.name, o)).mkString("|")
+      sqlQuery.fields.map(field => getStringRepr(field.name, o, wordToString)).mkString("|")
     })
 
     resp.mkString("\n")
+  }
+
+  def getStringRepr[T](fieldName: String, obj: T, thingToStrings: ThingToStrings[T]): String = {
+
+    val str = thingToStrings.getType(fieldName) match {
+      case ExpressionType.Integer => thingToStrings.getInt(fieldName, obj)
+      case ExpressionType.String => thingToStrings.getString(fieldName, obj)
+      case ExpressionType.Boolean => thingToStrings.getBoolean(fieldName, obj)
+    }
+
+    str.toString
   }
 
 }
