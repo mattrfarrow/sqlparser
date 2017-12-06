@@ -53,7 +53,7 @@ class TestParser extends FlatSpec with Matchers {
 
     val animalToString = new AnimalToString
 
-    val query = new TestSqlParser(animalToString).parse(sql) match {
+    val query = new SqlParser(animalToString).parse(sql) match {
       case t: Success[SqlQuery] => t.value
       case t: Failure[_] => throw t.exception
     }

@@ -122,10 +122,6 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   def word: Parser[String] =
     """[a-z]+""".r       ^^ { _.toString }
 
-}
-
-class TestSqlParser(thingToStrings: ThingToStrings[_]) extends SqlParser(thingToStrings) {
-
   def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
     case Success(matched,_) => scala.util.Success(matched)
     case Failure(msg,remaining) => scala.util.Failure(new Exception("Parser failed: "+msg ))

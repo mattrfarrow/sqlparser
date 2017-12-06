@@ -46,7 +46,7 @@ object Sqls {
     }
 
     println("Parsing " + sql)
-    val query = new TestSqlParser(thingsToStrings).parse(sql) match {
+    val query = new SqlParser(thingsToStrings).parse(sql) match {
       case t: Success[SqlQuery] => t.value
       case t: Failure[_] => throw t.exception
     }
