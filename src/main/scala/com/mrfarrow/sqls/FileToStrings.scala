@@ -14,6 +14,7 @@ class FileToStrings extends ThingToStrings[File] {
 
       override def getString(name: String, obj: File): String = name match {
         case "name" => obj.getName
+        case "size" => obj.length().toString
         case "type" => if (obj.isDirectory) "dir" else "file"
       }
 

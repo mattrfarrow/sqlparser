@@ -32,7 +32,8 @@ class TestParser extends FlatSpec with Matchers {
       """cat|fluff""".stripMargin)
   }
 
-  it should "work with a wildcard at the start" in {    genericTest(
+  it should "work with a wildcard at the start" in {
+    genericTest(
       "select species, name from whatever where species like '*t'",
       """cat|fluff""".stripMargin)
   }
@@ -42,10 +43,17 @@ class TestParser extends FlatSpec with Matchers {
       """cat|fluff""".stripMargin)
   }
 
-  it should "returns no results ofr a non matching wildcard" in {
+  it should "returns no results for a non matching wildcard" in {
     genericTest(
       "select species, name from whatever where species like 'cu*'",
       """""".stripMargin)
+  }
+
+  it should "support length()" in {
+    genericTest(
+      "select species, length(species) from whatever",
+      """cat|3
+        |hamster|7""".stripMargin)
   }
 
   private def genericTest(sql: String, expected: String): Unit = {
@@ -58,7 +66,7 @@ class TestParser extends FlatSpec with Matchers {
       case t: Failure[_] => throw t.exception
     }
 
-    ParserUtil.process(animals, animalToString, query, true) should be(expected)
+    ParserUtil.process(animals, animalToString, query, pipesNotSpaces = true) should be(expected)
   }
 
   case class Animal(name: String, species: String)

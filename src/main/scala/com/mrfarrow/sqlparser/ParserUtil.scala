@@ -26,7 +26,7 @@ object ParserUtil {
 
     val resp: List[Array[String]] =
       filtered.map(o => {
-      sqlQuery.fields.map(field => getStringRepr(field.name, o, wordToString))
+      sqlQuery.fields.map(field => field.evaluateString(wordToString, o))
     })
 
 
