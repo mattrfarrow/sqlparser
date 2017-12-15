@@ -18,6 +18,14 @@ case class SqlQuery(fields: Array[Expression], from: Option[String], where: Opti
   override def toString: String = "SELECT " + fields.mkString(",") + " FROM " + from + where.map(e => " WHERE "+e)
 }
 
+object ExpressionUtil {
+  def assertSameTypes(a: Expression, b: Expression, thingToStrings: ThingToStrings[_]) {
+    if (a.getType (thingToStrings) != b.getType (thingToStrings) ) {
+      throw new Exception ("Left side type is " + a.getType (thingToStrings) + " right side is " + b.getType (thingToStrings) )
+    }
+  }
+}
+
 abstract class Expression {
   def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType
   def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = throw new UnsupportedOperationException
@@ -49,11 +57,10 @@ class LengthExpr(expr: Expression) extends Expression {
 case class EqualsExpr(left: Expression, right: Expression) extends Expression {
 
   override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
-    if(left.getType(thingToStrings) != right.getType(thingToStrings)) {
-      throw new Exception("Left side type is " + left.getType(thingToStrings) + " right side is " + right.getType(thingToStrings))
-    }
+    ExpressionUtil.assertSameTypes(left, right, thingToStrings)
 
     left.getType(thingToStrings) match {
+      case ExpressionType.Integer => left.evaluateInt(thingToStrings, obj) == right.evaluateInt(thingToStrings, obj)
       case ExpressionType.Boolean => left.evaluateBool(thingToStrings, obj) == right.evaluateBool(thingToStrings, obj)
       case ExpressionType.String  => left.evaluateString(thingToStrings, obj) == right.evaluateString(thingToStrings, obj)
       case _       => throw new IllegalStateException()
@@ -64,7 +71,22 @@ case class EqualsExpr(left: Expression, right: Expression) extends Expression {
 
 }
 
-case class LikeExpr(left: Expression, toMatch: LiteralStringExpr, thingToStrings: ThingToStrings[_]) extends Expression {
+case class GreaterThanExpression(left: Expression, right: Expression) extends Expression {
+  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
+
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
+    ExpressionUtil.assertSameTypes(left, right, thingToStrings)
+
+    left.getType(thingToStrings) match {
+      case ExpressionType.Integer => left.evaluateInt(thingToStrings, obj) > right.evaluateInt(thingToStrings, obj)
+      case t       => throw new IllegalStateException("Unexpected type of left argument: "+left.getClass.getName)
+    }
+  }
+}
+
+
+
+case class LikeExpr(left: Expression, toMatch: LiteralStringExpr) extends Expression {
 
   override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
     val regex = ParserRegex.createRegexFromGlob(toMatch.string)
@@ -81,6 +103,14 @@ case class LiteralStringExpr(string: String) extends Expression {
   override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.String
 }
 
+case class LiteralIntExpr(int: Int) extends Expression {
+  override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = int.toString
+
+  override def evaluateInt[T](thingToStrings: ThingToStrings[T], obj: T): Int = int
+
+  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Integer
+}
+
 class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
     case Success(matched,_) => scala.util.Success(matched)
@@ -88,20 +118,24 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
     case Error(msg,_) => scala.util.Failure(new Exception(msg))
   }
 
-  private def number: Parser[Int]    = """(0|[1-9]\d*)""".r ^^ { _.toInt }
+  private def expression: Parser[_ <: Expression] =
+    likeExpr | comparitiveExpr | lengthExpr | field | literalExpression | bracketedExpression
+  private def standaloneExpression: Parser[_ <: Expression] =
+    literalExpression | lengthExpr | field | bracketedExpression  | comparitiveExpr
+  private def bracketedExpression: Parser[Expression] =
+    ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
 
-  private def expression: Parser[_ <: Expression] =   likeExpr | equalsExpression | lengthExpr |field | literalStringExpr | bracketedExpression
-
-  private def bracketedExpression: Parser[Expression] = ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
-  private def standaloneExpression: Parser[_ <: Expression] = literalStringExpr | field | bracketedExpression
-
-  private def equalsExpression: Parser[EqualsExpr] ={
+  private def equalsExpression: Parser[EqualsExpr] =
     standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }
-  }
+
+  private def greaterThanExpr: Parser[GreaterThanExpression] =
+    standaloneExpression~ ">" ~ standaloneExpression ^^ { case left ~ gt ~ right  => GreaterThanExpression(left, right) }
 
   private def likeExpr: Parser[LikeExpr] ={
-    standaloneExpression ~ "like" ~ literalStringExpr ^^ { case left ~ like ~ right  => LikeExpr(left, right, thingToStrings) }
+    standaloneExpression ~ "like" ~ literalStringExpr ^^ { case left ~ like ~ right  => LikeExpr(left, right) }
   }
+
+  private def comparitiveExpr = equalsExpression | likeExpr | greaterThanExpr
 
   private def lengthExpr: Parser[LengthExpr] ={
     "length" ~ bracketedExpression ^^ { case length ~ bracketedExpr  => new LengthExpr(bracketedExpr) }
@@ -114,6 +148,11 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
 
   private def literalStringExpr: Parser[LiteralStringExpr] =
      "'" ~ """[a-z*]+""".r ~ "'" ^^ { case q1 ~ s ~ q2 => LiteralStringExpr(s) }
+
+  private def literalIntExpr: Parser[LiteralIntExpr] =
+    """(0|[1-9]\d*)""".r ^^ {s => LiteralIntExpr(s.toInt) }
+
+  private def literalExpression: Parser[Expression] = literalIntExpr | literalStringExpr
 
   private def directoryPath: Parser[String] = """[/.A-Za-z]+""".r
 
