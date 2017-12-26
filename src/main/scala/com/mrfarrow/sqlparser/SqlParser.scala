@@ -2,6 +2,7 @@ package com.mrfarrow.sqlparser
 
 
 
+
 import scala.util.Try
 import scala.util.parsing.combinator._
 
@@ -38,6 +39,15 @@ case class FieldExpr(name: String) extends Expression {
   override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = thingToStrings.getString(name, obj)
   override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = thingToStrings.getType(name)
   override def evaluateInt[T](thingToStrings: ThingToStrings[T], obj: T): Int = thingToStrings.getInt(name, obj)
+}
+
+case class NotExpression(expr: Expression) extends Expression {
+  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
+
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = expr.getType(thingToStrings) match {
+    case ExpressionType.Boolean  => !expr.evaluateBool(thingToStrings, obj)
+    case _       => throw new IllegalStateException("Not can only be applied to boolean expressions")
+  }
 }
 
 case class From(s: String)
@@ -130,11 +140,14 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   }
 
   private def expression: Parser[_ <: Expression] =
-    likeExpr | comparitiveExpr | lengthExpr | field | literalExpression | bracketedExpression
+    notExpression | likeExpr | comparitiveExpr | lengthExpr | field | literalExpression | bracketedExpression
   private def standaloneExpression: Parser[_ <: Expression] =
-    literalExpression | lengthExpr | field | bracketedExpression  | comparitiveExpr
+    notExpression | literalExpression | lengthExpr | field | bracketedExpression  | comparitiveExpr
   private def bracketedExpression: Parser[Expression] =
     ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
+
+  private def notExpression: Parser[NotExpression] =
+    "not " ~ expression ^^ { case not ~ expr => NotExpression(expr) }
 
   private def equalsExpression: Parser[EqualsExpr] =
     standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }
