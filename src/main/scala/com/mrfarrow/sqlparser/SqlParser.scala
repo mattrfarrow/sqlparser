@@ -84,7 +84,18 @@ case class GreaterThanExpression(left: Expression, right: Expression) extends Ex
   }
 }
 
+case class LessThanExpression(left: Expression, right: Expression) extends Expression {
+  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
 
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
+    ExpressionUtil.assertSameTypes(left, right, thingToStrings)
+
+    left.getType(thingToStrings) match {
+      case ExpressionType.Integer => left.evaluateInt(thingToStrings, obj) < right.evaluateInt(thingToStrings, obj)
+      case t       => throw new IllegalStateException("Unexpected type of left argument: "+left.getClass.getName)
+    }
+  }
+}
 
 case class LikeExpr(left: Expression, toMatch: LiteralStringExpr) extends Expression {
 
@@ -131,11 +142,14 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   private def greaterThanExpr: Parser[GreaterThanExpression] =
     standaloneExpression~ ">" ~ standaloneExpression ^^ { case left ~ gt ~ right  => GreaterThanExpression(left, right) }
 
+  private def lessThanExpr: Parser[LessThanExpression] =
+    standaloneExpression~ "<" ~ standaloneExpression ^^ { case left ~ gt ~ right  => LessThanExpression(left, right) }
+
   private def likeExpr: Parser[LikeExpr] ={
     standaloneExpression ~ "like" ~ literalStringExpr ^^ { case left ~ like ~ right  => LikeExpr(left, right) }
   }
 
-  private def comparitiveExpr = equalsExpression | likeExpr | greaterThanExpr
+  private def comparitiveExpr = equalsExpression | likeExpr | greaterThanExpr | lessThanExpr
 
   private def lengthExpr: Parser[LengthExpr] ={
     "length" ~ bracketedExpression ^^ { case length ~ bracketedExpr  => new LengthExpr(bracketedExpr) }

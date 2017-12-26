@@ -62,6 +62,12 @@ class TestParser extends FlatSpec with Matchers {
       """hamster""".stripMargin)
   }
 
+  it should "support less-than" in {
+    genericTest(
+      "select species where length(species)<5",
+      """cat""".stripMargin)
+  }
+
   private def genericTest(sql: String, expected: String): Unit = {
     val animals = List(Animal("fluff", "cat"), Animal("Terry","hamster"))
 
