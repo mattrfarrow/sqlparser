@@ -32,6 +32,8 @@ object ParserUtil {
 
     if(pipesNotSpaces) {
       resp.map(_.mkString("|")).mkString("\n")
+    } else if(resp.isEmpty) {
+      ""
     } else {
       val fieldLengths: Array[Int] = getMaximumFieldLengths(resp)
       resp.map(record =>
