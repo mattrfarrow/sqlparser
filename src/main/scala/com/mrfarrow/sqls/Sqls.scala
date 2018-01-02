@@ -23,7 +23,6 @@ object Sqls {
 
     val thingsToStrings = new FileToStrings
 
-    println("Parsing " + sql)
     val query = new SqlParser(thingsToStrings).parse(sql) match {
       case t: Success[SqlQuery] => t.value
       case t: Failure[_] => throw t.exception
