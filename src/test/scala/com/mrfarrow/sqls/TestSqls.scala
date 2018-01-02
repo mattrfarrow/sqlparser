@@ -35,7 +35,7 @@ class TestSqls extends FlatSpec with Matchers {
     )
   }
 
-  it should "handle a WHERE clause that excludes everyhging" in {
+  it should "handle a WHERE clause that excludes everything" in {
     val sql = """select name from src/test/resources/colours/ where length(name) > 9999"""
     Sqls.runLs(new File("src/test/resources"), sql) should be (
       ""
