@@ -7,6 +7,15 @@ import org.scalatest.{FlatSpec, Matchers}
 class TestSqls extends FlatSpec with Matchers {
 
   it should "list files" in {
+    val sql = """select name"""
+    Sqls.runLs(new File("src/test/resources"), sql) should be (
+      "colours\n" +
+      "longerFile.txt\n" +
+      "shortFile.txt"
+    )
+  }
+
+  it should "list files with a WHERE" in {
     val sql = """select name where name like 'short*'"""
     Sqls.runLs(new File("src/test/resources"), sql) should be ("shortFile.txt")
   }
