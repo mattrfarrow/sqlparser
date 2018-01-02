@@ -149,9 +149,9 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   }
 
   private def expression: Parser[_ <: Expression] =
-    andExpression | notExpression | likeExpr | comparitiveExpr | lengthExpr | field | literalExpression | bracketedExpression
+    bracketedExpression | andExpression | notExpression | comparitiveExpr | lengthExpr | field | literalExpression
   private def standaloneExpression: Parser[_ <: Expression] =
-    notExpression  | literalExpression | lengthExpr | field | bracketedExpression  | comparitiveExpr
+    bracketedExpression| notExpression  | lengthExpr | field | literalExpression | comparitiveExpr
   private def bracketedExpression: Parser[Expression] =
     ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
 
