@@ -19,7 +19,7 @@ object Sqls {
     println(runLs(new File(currentDir), sql))
   }
 
-  def runLs(workingDir: File, sql: String) = {
+  def runLs(workingDir: File, sql: String): String = {
 
     val thingsToStrings = new FileToStrings
 
@@ -40,7 +40,7 @@ object Sqls {
 
     val files = directoryToList.listFiles()
 
-    ParserUtil.process(files.toList, thingsToStrings, query, false)
+    ParserUtil.process(files.toList, thingsToStrings, query, pipesNotSpaces = false)
   }
 
 }
