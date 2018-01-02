@@ -50,6 +50,15 @@ case class NotExpression(expr: Expression) extends Expression {
   }
 }
 
+case class AndExpression(expr1: Expression, expr2: Expression) extends Expression {
+  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
+
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = (expr1.getType(thingToStrings), expr2.getType(thingToStrings)) match {
+    case (ExpressionType.Boolean, ExpressionType.Boolean)  => expr1.evaluateBool(thingToStrings, obj) && expr2.evaluateBool(thingToStrings, obj)
+    case _                                                 => throw new IllegalStateException("Not can only be applied to boolean expressions")
+  }
+}
+
 case class From(s: String)
 case class Where(expr: Expression)
 
@@ -140,14 +149,17 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   }
 
   private def expression: Parser[_ <: Expression] =
-    notExpression | likeExpr | comparitiveExpr | lengthExpr | field | literalExpression | bracketedExpression
+    andExpression | notExpression | likeExpr | comparitiveExpr | lengthExpr | field | literalExpression | bracketedExpression
   private def standaloneExpression: Parser[_ <: Expression] =
-    notExpression | literalExpression | lengthExpr | field | bracketedExpression  | comparitiveExpr
+    notExpression  | literalExpression | lengthExpr | field | bracketedExpression  | comparitiveExpr
   private def bracketedExpression: Parser[Expression] =
     ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
 
   private def notExpression: Parser[NotExpression] =
     "not " ~ expression ^^ { case not ~ expr => NotExpression(expr) }
+
+  private def andExpression: Parser[AndExpression] =
+    standaloneExpression ~ "and" ~ standaloneExpression ^^ { case e1 ~ and ~ e2 => AndExpression(e1,e2)}
 
   private def equalsExpression: Parser[EqualsExpr] =
     standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }

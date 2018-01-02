@@ -74,6 +74,24 @@ class TestParser extends FlatSpec with Matchers {
       """cat""".stripMargin)
   }
 
+  it should "support and" in {
+    genericTest(
+      "select species where not length(species)>5 and not length(species)>4",
+      """cat""".stripMargin)
+  }
+
+  it should "support and 2" in {
+    genericTest(
+      "select species where not length(species)>1 and not length(species)>5",
+      """""".stripMargin)
+  }
+
+  it should "support and 3" in {
+    genericTest(
+      "select species where not length(species)>5 and not length(species)>1",
+      """""".stripMargin)
+  }
+
 
   private def genericTest(sql: String, expected: String): Unit = {
     val animals = List(Animal("fluff", "cat"), Animal("Terry","hamster"))
