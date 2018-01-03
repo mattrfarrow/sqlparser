@@ -6,3 +6,5 @@ Move Expression classes into their own files
 Shorten naming of methods in parser and improve ordering so it's easier to reason about.
 
 Use Scala Native once scala-parser-combinators 1.0.7 is released with support for it.
+
+Having expression and standalone-expression probably doesn't make sense.  At least understand why we need something like this.
