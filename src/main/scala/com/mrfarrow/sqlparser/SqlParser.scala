@@ -14,15 +14,6 @@ object SqlParser {
 
 }
 
-object ExpressionUtil {
-  def assertSameTypes(a: Expression, b: Expression, thingToStrings: ThingToStrings[_]) {
-    if (a.getType (thingToStrings) != b.getType (thingToStrings) ) {
-      throw new Exception ("Left side type is " + a.getType (thingToStrings) + " right side is " + b.getType (thingToStrings) )
-    }
-  }
-}
-
-
 class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
     case Success(matched,_) => scala.util.Success(matched)

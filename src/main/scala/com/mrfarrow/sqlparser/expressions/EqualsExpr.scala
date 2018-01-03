@@ -1,11 +1,11 @@
 package com.mrfarrow.sqlparser.expressions
 
-import com.mrfarrow.sqlparser.{ExpressionType, ExpressionUtil, ThingToStrings}
+import com.mrfarrow.sqlparser.{ExpressionType, ThingToStrings}
 
 case class EqualsExpr(left: Expression, right: Expression) extends Expression {
 
   override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
-    ExpressionUtil.assertSameTypes(left, right, thingToStrings)
+    Expression.assertSameTypes(left, right, thingToStrings)
 
     left.getType(thingToStrings) match {
       case ExpressionType.Integer => left.evaluateInt(thingToStrings, obj) == right.evaluateInt(thingToStrings, obj)
