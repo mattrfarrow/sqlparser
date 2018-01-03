@@ -8,7 +8,7 @@ class TestParser extends FlatSpec with Matchers {
 
   it should "work with one selection" in {
       genericTest(
-        "select species from whatever",
+        "select species",
         """cat
           |hamster""".stripMargin)
   }
