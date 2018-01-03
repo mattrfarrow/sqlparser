@@ -1,7 +1,6 @@
 package com.mrfarrow.sqlparser
 
-
-
+import com.mrfarrow.sqlparser.expressions._
 
 import scala.util.Try
 import scala.util.parsing.combinator._
@@ -15,10 +14,6 @@ object SqlParser {
 
 }
 
-case class SqlQuery(fields: Array[Expression], from: Option[String], where: Option[Expression]) {
-  override def toString: String = "SELECT " + fields.mkString(",") + " FROM " + from + where.map(e => " WHERE "+e)
-}
-
 object ExpressionUtil {
   def assertSameTypes(a: Expression, b: Expression, thingToStrings: ThingToStrings[_]) {
     if (a.getType (thingToStrings) != b.getType (thingToStrings) ) {
@@ -27,119 +22,6 @@ object ExpressionUtil {
   }
 }
 
-abstract class Expression {
-  def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType
-  def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = throw new UnsupportedOperationException
-  def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = throw new UnsupportedOperationException("Not supported by "+getClass.getName)
-  def evaluateInt[T](thingToStrings: ThingToStrings[T], obj: T): Int = throw new UnsupportedOperationException
-}
-
-case class FieldExpr(name: String) extends Expression {
-  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = thingToStrings.getBoolean(name, obj)
-  override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = thingToStrings.getString(name, obj)
-  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = thingToStrings.getType(name)
-  override def evaluateInt[T](thingToStrings: ThingToStrings[T], obj: T): Int = thingToStrings.getInt(name, obj)
-}
-
-case class NotExpression(expr: Expression) extends Expression {
-  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
-
-  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = expr.getType(thingToStrings) match {
-    case ExpressionType.Boolean  => !expr.evaluateBool(thingToStrings, obj)
-    case _       => throw new IllegalStateException("Not can only be applied to boolean expressions")
-  }
-}
-
-case class AndExpression(expr1: Expression, expr2: Expression) extends Expression {
-  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
-
-  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = (expr1.getType(thingToStrings), expr2.getType(thingToStrings)) match {
-    case (ExpressionType.Boolean, ExpressionType.Boolean)  => expr1.evaluateBool(thingToStrings, obj) && expr2.evaluateBool(thingToStrings, obj)
-    case _                                                 => throw new IllegalStateException("Not can only be applied to boolean expressions")
-  }
-}
-
-case class From(s: String)
-case class Where(expr: Expression)
-
-class LengthExpr(expr: Expression) extends Expression {
-  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Integer
-
-  override def evaluateInt[T](thingToStrings: ThingToStrings[T], obj: T): Int = expr.getType(thingToStrings) match {
-    case ExpressionType.String  => expr.evaluateString(thingToStrings, obj).length
-    case _       => throw new IllegalStateException()
-  }
-
-  override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = evaluateInt(thingToStrings, obj).toString
-}
-
-case class EqualsExpr(left: Expression, right: Expression) extends Expression {
-
-  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
-    ExpressionUtil.assertSameTypes(left, right, thingToStrings)
-
-    left.getType(thingToStrings) match {
-      case ExpressionType.Integer => left.evaluateInt(thingToStrings, obj) == right.evaluateInt(thingToStrings, obj)
-      case ExpressionType.Boolean => left.evaluateBool(thingToStrings, obj) == right.evaluateBool(thingToStrings, obj)
-      case ExpressionType.String  => left.evaluateString(thingToStrings, obj) == right.evaluateString(thingToStrings, obj)
-      case _       => throw new IllegalStateException()
-    }
-  }
-
-  override def getType[T](thingToStrings:  ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
-
-}
-
-case class GreaterThanExpression(left: Expression, right: Expression) extends Expression {
-  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
-
-  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
-    ExpressionUtil.assertSameTypes(left, right, thingToStrings)
-
-    left.getType(thingToStrings) match {
-      case ExpressionType.Integer => left.evaluateInt(thingToStrings, obj) > right.evaluateInt(thingToStrings, obj)
-      case t       => throw new IllegalStateException("Unexpected type of left argument: "+left.getClass.getName)
-    }
-  }
-}
-
-case class LessThanExpression(left: Expression, right: Expression) extends Expression {
-  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
-
-  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
-    ExpressionUtil.assertSameTypes(left, right, thingToStrings)
-
-    left.getType(thingToStrings) match {
-      case ExpressionType.Integer => left.evaluateInt(thingToStrings, obj) < right.evaluateInt(thingToStrings, obj)
-      case t       => throw new IllegalStateException("Unexpected type of left argument: "+left.getClass.getName)
-    }
-  }
-}
-
-case class LikeExpr(left: Expression, toMatch: LiteralStringExpr) extends Expression {
-
-  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
-    val regex = ParserRegex.createRegexFromGlob(toMatch.string)
-    val leftThing: String = left.evaluateString(thingToStrings, obj)
-    leftThing.matches(regex)
-  }
-
-  override def getType[T](thingToStrings:  ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
-}
-
-case class LiteralStringExpr(string: String) extends Expression {
-  override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = string
-
-  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.String
-}
-
-case class LiteralIntExpr(int: Int) extends Expression {
-  override def evaluateString[T](thingToStrings: ThingToStrings[T], obj: T): String = int.toString
-
-  override def evaluateInt[T](thingToStrings: ThingToStrings[T], obj: T): Int = int
-
-  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Integer
-}
 
 class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
   def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {

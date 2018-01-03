@@ -3,6 +3,7 @@ package com.mrfarrow.sqls
 import java.io.File
 
 import com.mrfarrow.sqlparser._
+import com.mrfarrow.sqlparser.expressions.SqlQuery
 
 import scala.util.{Failure, Success}
 

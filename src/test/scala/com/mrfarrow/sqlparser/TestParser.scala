@@ -1,5 +1,6 @@
 package com.mrfarrow.sqlparser
 
+import com.mrfarrow.sqlparser.expressions.SqlQuery
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.util.{Failure, Success}

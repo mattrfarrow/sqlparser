@@ -1,8 +1,7 @@
 package com.mrfarrow.sqlparser
 
-/**
-  * Created by matt.farrow on 30/11/2017.
-  */
+import com.mrfarrow.sqlparser.expressions.SqlQuery
+
 object ParserUtil {
 
   def getMaximumFieldLengths(resp: List[Array[String]]): Array[Int] = {

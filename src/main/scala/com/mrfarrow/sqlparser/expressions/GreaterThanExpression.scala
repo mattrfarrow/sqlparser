@@ -1,0 +1,16 @@
+package com.mrfarrow.sqlparser.expressions
+
+import com.mrfarrow.sqlparser.{ExpressionType, ExpressionUtil, ThingToStrings}
+
+case class GreaterThanExpression(left: Expression, right: Expression) extends Expression {
+  override def getType[T](thingToStrings: ThingToStrings[T]): ExpressionType = ExpressionType.Boolean
+
+  override def evaluateBool[T](thingToStrings: ThingToStrings[T], obj: T): Boolean = {
+    ExpressionUtil.assertSameTypes(left, right, thingToStrings)
+
+    left.getType(thingToStrings) match {
+      case ExpressionType.Integer => left.evaluateInt(thingToStrings, obj) > right.evaluateInt(thingToStrings, obj)
+      case t       => throw new IllegalStateException("Unexpected type of left argument: "+left.getClass.getName)
+    }
+  }
+}
