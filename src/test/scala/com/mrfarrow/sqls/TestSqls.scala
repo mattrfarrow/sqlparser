@@ -7,7 +7,7 @@ import org.scalatest.{FlatSpec, Matchers}
 class TestSqls extends FlatSpec with Matchers {
 
   it should "list files" in {
-    val sql = """select name"""
+    val sql = """select name order by name"""
     Sqls.runLs(new File("src/test/resources"), sql) should be (
       "colours\n" +
       "longerFile.txt\n" +
@@ -21,7 +21,7 @@ class TestSqls extends FlatSpec with Matchers {
   }
 
   it should "pad fields" in {
-    val sql = """select name, type where type like 'fil*'"""
+    val sql = """select name, type where type like 'fil*' order by name"""
     Sqls.runLs(new File("src/test/resources"), sql) should be (
       "longerFile.txt file\n" +
       "shortFile.txt  file"

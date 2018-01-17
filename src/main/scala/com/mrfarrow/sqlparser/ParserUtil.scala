@@ -1,6 +1,6 @@
 package com.mrfarrow.sqlparser
 
-import com.mrfarrow.sqlparser.expressions.SqlQuery
+import com.mrfarrow.sqlparser.expressions.{Expression, SqlQuery}
 
 object ParserUtil {
 
@@ -23,11 +23,34 @@ object ParserUtil {
       case None => objects
     }
 
-    val resp: List[Array[String]] =
-      filtered.map(o => {
-      sqlQuery.fields.map(field => field.evaluateString(wordToString, o))
-    })
+    def sorter(expressions: Array[Expression])(a: T, b: T): Boolean = {
+      for(expression <- expressions) {
+        val comparison = expression.getType(wordToString) match {
+          case ExpressionType.Boolean => expression.evaluateBool(wordToString, a).compareTo(expression.evaluateBool(wordToString, b))
+          case ExpressionType.Integer => expression.evaluateInt(wordToString, a).compareTo(expression.evaluateInt(wordToString, b))
+          case ExpressionType.String => expression.evaluateString(wordToString, a).compareTo(expression.evaluateString(wordToString, b))
+          case t => throw new RuntimeException("Don't know what to do for type " + t)
+        }
 
+        if (comparison < 0) {
+          return true
+        } else if (comparison > 0) {
+          return false
+        }
+      }
+
+      true
+    }
+
+    val ordered = sqlQuery.orderBy match {
+      case Some(o) => filtered.sortWith(sorter(o))
+      case None => filtered
+    }
+
+    val resp: List[Array[String]] =
+      ordered.map(o => {
+        sqlQuery.fields.map(field => field.evaluateString(wordToString, o))
+      })
 
     if(pipesNotSpaces) {
       resp.map(_.mkString("|")).mkString("\n")

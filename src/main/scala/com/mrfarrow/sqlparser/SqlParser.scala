@@ -69,7 +69,9 @@ class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers with Pac
   private lazy val from: PackratParser[String] = "from" ~ directoryPath ^^ { case from ~ place => place }
   private lazy val where: PackratParser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
 
-  private lazy val selectFrom: PackratParser[SqlQuery] = "select" ~ fields ~ opt(from) ~ opt(where) ^^ {
-    case select ~ fs ~ from  ~ where => SqlQuery(fs, from, where)
+  private lazy val orderBy: PackratParser[Array[Expression]] = "order" ~ "by" ~ fields ^^ {case o ~ b ~ f => f}
+
+  private lazy val selectFrom: PackratParser[SqlQuery] = "select" ~ fields ~ opt(from) ~ opt(where) ~ opt(orderBy) ^^ {
+    case select ~ fs ~ from  ~ where ~ order => SqlQuery(fs, from, where, order)
   }
 }
