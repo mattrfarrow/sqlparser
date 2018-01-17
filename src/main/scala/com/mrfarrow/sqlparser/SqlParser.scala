@@ -4,7 +4,6 @@ import com.mrfarrow.sqlparser.expressions._
 
 import scala.util.Try
 import scala.util.parsing.combinator._
-import scala.util.parsing.input.CharSequenceReader
 
 
 object SqlParser {
@@ -14,7 +13,7 @@ object SqlParser {
 }
 
 class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers with PackratParsers {
-  def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), new PackratReader[Char](new CharSequenceReader(sql))) match {
+  def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
     case Success(matched,_) => scala.util.Success(matched)
     case Failure(msg,remaining) => scala.util.Failure(new Exception("Parser failed: "+msg ))
     case Error(msg,_) => scala.util.Failure(new Exception(msg))
