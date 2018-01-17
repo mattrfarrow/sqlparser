@@ -12,7 +12,7 @@ abstract class Expression {
 object Expression {
   def assertSameTypes(a: Expression, b: Expression, thingToStrings: ThingToStrings[_]) {
     if (a.getType (thingToStrings) != b.getType (thingToStrings) ) {
-      throw new Exception ("Left side type is " + a.getType (thingToStrings) + " right side is " + b.getType (thingToStrings) )
+      throw new Exception ("Left ("+a+") is " + a.getType (thingToStrings) + " right ("+b+") is " + b.getType (thingToStrings) )
     }
   }
 }

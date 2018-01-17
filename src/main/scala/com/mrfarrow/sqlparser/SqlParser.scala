@@ -4,6 +4,7 @@ import com.mrfarrow.sqlparser.expressions._
 
 import scala.util.Try
 import scala.util.parsing.combinator._
+import scala.util.parsing.input.CharSequenceReader
 
 
 object SqlParser {
@@ -12,66 +13,63 @@ object SqlParser {
   }
 }
 
-class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers {
-  def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), sql) match {
+class SqlParser(thingToStrings: ThingToStrings[_]) extends RegexParsers with PackratParsers {
+  def parse(sql: String): Try[SqlQuery] = parse(phrase(selectFrom), new PackratReader[Char](new CharSequenceReader(sql))) match {
     case Success(matched,_) => scala.util.Success(matched)
     case Failure(msg,remaining) => scala.util.Failure(new Exception("Parser failed: "+msg ))
     case Error(msg,_) => scala.util.Failure(new Exception(msg))
   }
 
-  private def expression: Parser[_ <: Expression] =
+  private lazy val expression: PackratParser[_ <: Expression] =
     bracketedExpr | andExpr | notExpr | comparitiveExpr | lengthExpr | field | literalExpr
 
-  private def standaloneExpression: Parser[_ <: Expression] =
-    bracketedExpr| notExpr  | lengthExpr | field | literalExpr | comparitiveExpr
-
-  private def bracketedExpr: Parser[Expression] =
+  private lazy val bracketedExpr: PackratParser[Expression] =
     ("(" ~ expression ~ ")") ^^ {case b ~ ex ~ b2 => ex}
 
-  private def notExpr: Parser[NotExpression] =
+  private lazy val notExpr: PackratParser[NotExpression] =
     "not " ~ expression ^^ { case not ~ expr => NotExpression(expr) }
 
-  private def andExpr: Parser[AndExpression] =
-    standaloneExpression ~ "and" ~ standaloneExpression ^^ { case e1 ~ and ~ e2 => AndExpression(e1,e2)}
+  private lazy val andExpr: PackratParser[AndExpression] =
+    expression ~ "and" ~ expression ^^ { case e1 ~ and ~ e2 => AndExpression(e1,e2)}
 
-  private def equalsExpr: Parser[EqualsExpr] =
-    standaloneExpression ~ "=" ~ standaloneExpression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }
+  private lazy val equalsExpr: PackratParser[EqualsExpr] =
+    expression ~ "=" ~ expression ^^ { case left ~ eq ~ right  => EqualsExpr(left, right) }
 
-  private def greaterThanExpr: Parser[GreaterThanExpression] =
-    standaloneExpression~ ">" ~ standaloneExpression ^^ { case left ~ gt ~ right  => GreaterThanExpression(left, right) }
+  private lazy val greaterThanExpr: PackratParser[GreaterThanExpression] =
+    expression~ ">" ~ expression ^^ { case left ~ gt ~ right  => GreaterThanExpression(left, right) }
 
-  private def lessThanExpr: Parser[LessThanExpression] =
-    standaloneExpression~ "<" ~ standaloneExpression ^^ { case left ~ gt ~ right  => LessThanExpression(left, right) }
+  private lazy val lessThanExpr: PackratParser[LessThanExpression] =
+    expression~ "<" ~ expression ^^ { case left ~ gt ~ right  => LessThanExpression(left, right) }
 
-  private def likeExpr: Parser[LikeExpr] ={
-    standaloneExpression ~ "like" ~ literalStringExpr ^^ { case left ~ like ~ right  => LikeExpr(left, right) }
+  private lazy val likeExpr: PackratParser[LikeExpr] ={
+    expression ~ "like" ~ literalStringExpr ^^ { case left ~ like ~ right  => LikeExpr(left, right) }
   }
 
-  private def comparitiveExpr = equalsExpr | likeExpr | greaterThanExpr | lessThanExpr
+  private lazy val comparitiveExpr = equalsExpr | likeExpr | greaterThanExpr | lessThanExpr
 
-  private def lengthExpr: Parser[LengthExpr] ={
-    "length" ~ bracketedExpr ^^ { case length ~ bracketedExpr  => new LengthExpr(bracketedExpr) }
+  private lazy val lengthExpr: PackratParser[LengthExpr] ={
+    "length" ~ bracketedExpr ^^ { case length ~ e  => new LengthExpr(e) }
   }
 
-  private def field: Parser[Expression]   = """[a-z]+""".r       ^^ { s => FieldExpr(s) }
-  private def fields: Parser[Array[Expression]]  = expression ~ opt("," ~ fields) ^^ {
+  private lazy val field: PackratParser[Expression]   = """[a-z]+""".r       ^^ { s => FieldExpr(s) }
+  private lazy val fields: PackratParser[Array[Expression]]  = expression ~ opt("," ~ fields) ^^ {
     case f ~ Some(comma ~ fs) => Array(f) ++ fs
     case f ~ None => Array(f)}
 
-  private def literalStringExpr: Parser[LiteralStringExpr] =
+  private lazy val literalStringExpr: PackratParser[LiteralStringExpr] =
      "'" ~ """[a-z*]+""".r ~ "'" ^^ { case q1 ~ s ~ q2 => LiteralStringExpr(s) }
 
-  private def literalIntExpr: Parser[LiteralIntExpr] =
+  private lazy val literalIntExpr: PackratParser[LiteralIntExpr] =
     """(0|[1-9]\d*)""".r ^^ {s => LiteralIntExpr(s.toInt) }
 
-  private def literalExpr: Parser[Expression] = literalIntExpr | literalStringExpr
+  private lazy val literalExpr: PackratParser[Expression] = literalIntExpr | literalStringExpr
 
-  private def directoryPath: Parser[String] = """[/.A-Za-z]+""".r
+  private lazy val directoryPath: PackratParser[String] = """[/.A-Za-z]+""".r ^^ { x => x }
 
-  private def from: Parser[String] = "from" ~ directoryPath ^^ { case from ~ place => place }
-  private def where: Parser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
+  private lazy val from: PackratParser[String] = "from" ~ directoryPath ^^ { case from ~ place => place }
+  private lazy val where: PackratParser[Expression] = "where" ~ expression ^^ {case whereEx ~ expr => expr}
 
-  private def selectFrom: Parser[SqlQuery] = "select" ~ fields ~ opt(from) ~ opt(where) ^^ {
+  private lazy val selectFrom: PackratParser[SqlQuery] = "select" ~ fields ~ opt(from) ~ opt(where) ^^ {
     case select ~ fs ~ from  ~ where => SqlQuery(fs, from, where)
   }
 }
